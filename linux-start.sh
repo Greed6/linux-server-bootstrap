@@ -3,15 +3,16 @@
 # linux-start.sh — первичная настройка Linux-сервера / initial Linux server setup
 #
 # Поддержка / Supported:
-#   Ubuntu, Debian, RHEL, CentOS (7/8/Stream), Rocky, AlmaLinux, Oracle Linux,
-#   Astra Linux SE (1.7/1.8), РЕД ОС (7/8)
+#   Ubuntu 22.04/24.04, Debian 12/13, RHEL / Rocky / AlmaLinux / Oracle Linux 8/9
+#
+# Повторный запуск / Re-run:  sudo linux-start
 #
 # Каждая задача — отдельный модуль в modules/, меню строится автоматически.
 # Every task is a separate module in modules/, the menu is built automatically.
 
 set -uo pipefail
 
-LS_VERSION="2.0.0"
+LS_VERSION="2.1.0"
 LS_ROOT=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
 export LS_ROOT LS_VERSION
 
@@ -126,6 +127,49 @@ run_modules() {
     return $(( failed > 0 ))
 }
 
+# Команда linux-start для повторного запуска / re-run command
+install_launcher() {
+    local root=$LS_ROOT link=/usr/local/sbin/linux-start dest=/opt/linux-server-bootstrap
+    # Из временного каталога копируем в /opt, иначе ссылка пропадёт после перезагрузки
+    case $root in
+        /tmp/*|/var/tmp/*|/dev/shm/*)
+            mkdir -p "$dest" && cp -a "$root/." "$dest/" && root=$dest
+            info "$(L "Скрипт скопирован в $dest" "Script copied to $dest")" ;;
+    esac
+    [[ $(readlink -f "$link" 2>/dev/null) == "$root/linux-start.sh" ]] && return 0
+    mkdir -p "$(dirname "$link")"
+    ln -sfn "$root/linux-start.sh" "$link" \
+        && info "$(L 'Повторный запуск в любой момент: sudo linux-start' 'Re-run at any time: sudo linux-start')"
+}
+
+# Меню → подтверждение → выполнение. 0 = выполнено, 1 = выход без изменений
+select_and_run() {
+    local want=$1 sel id
+    if [[ -n $want ]]; then
+        select_ids "$want"
+    else
+        init_selection
+        if [[ $LS_NONINTERACTIVE != 1 ]]; then
+            while true; do
+                show_menu "$( ((ARG_TEXT_MENU)) && echo text)" || return 1
+                check_conflicts && break
+            done
+        fi
+    fi
+
+    sel=$(selected_ids)
+    [[ -z $sel ]] && { info "$(L 'Ничего не выбрано' 'Nothing selected')"; return 1; }
+    echo
+    info "$(L 'Будет выполнено' 'Will run'):"
+    for id in $sel; do echo "    - ${MOD_TITLE[$id]}"; done
+    ask_yn CONFIRM "$(L 'Начать?' 'Start?')" y || return 1
+
+    : > "$LS_SUMMARY_FILE"
+    run_modules
+    LAST_RC=$?
+    return 0
+}
+
 main() {
     if (( ARG_LIST )); then
         load_modules; list_modules; exit 0
@@ -145,32 +189,22 @@ main() {
     load_modules
     info "$(L 'Система' 'System'): $OS_NAME ($FAMILY, $PKG)"
 
+    install_launcher
+
     local want=${ARG_MODULES:-${LS_MODULES:-}}
-    if [[ -n $want ]]; then
-        select_ids "$want"
-    else
-        init_selection
-        if [[ $LS_NONINTERACTIVE != 1 ]]; then
-            while true; do
-                if ! show_menu "$( ((ARG_TEXT_MENU)) && echo text)"; then
-                    info "$(L 'Выход без изменений' 'Exit without changes')"; exit 0
-                fi
-                check_conflicts && break
-            done
+    # Интерактивно после установки можно вернуться в меню и доустановить компоненты
+    while true; do
+        if ! select_and_run "$want"; then
+            info "$(L 'Выход без изменений' 'Exit without changes')"
+            break
         fi
-    fi
-
-    local sel
-    sel=$(selected_ids)
-    [[ -z $sel ]] && { info "$(L 'Ничего не выбрано' 'Nothing selected')"; exit 0; }
-
-    echo
-    info "$(L 'Будет выполнено' 'Will run'):"
-    local id
-    for id in $sel; do echo "    - ${MOD_TITLE[$id]}"; done
-    ask_yn CONFIRM "$(L 'Начать?' 'Start?')" y || exit 0
-
-    run_modules
+        [[ -n $want || $LS_NONINTERACTIVE == 1 ]] && break
+        echo
+        ask_yn MENU_AGAIN "$(L 'Вернуться в меню, чтобы доустановить компоненты?' \
+                               'Back to the menu to install more components?')" n || break
+    done
+    info "$(L 'Повторный запуск: sudo linux-start' 'Re-run: sudo linux-start')"
+    return "${LAST_RC:-0}"
 }
 
 main "$@"

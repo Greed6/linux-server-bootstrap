@@ -59,5 +59,13 @@ if has crowdsec; then
     check "bouncer registered" bash -c 'cscli bouncers list | grep -q firewall'
 fi
 
+if has docker; then
+    check "docker running"        systemctl is-active docker
+    check "docker compose plugin" docker compose version
+    check "docker log rotation"   grep -q max-size /etc/docker/daemon.json
+    check "docker hello-world"    docker run --rm hello-world
+    has ufw && check "ufw DOCKER-USER rules" bash -c 'iptables -S DOCKER-USER | grep -q ufw-user-forward'
+fi
+
 echo "RESULT: $pass passed, $fail failed"
 (( fail == 0 ))

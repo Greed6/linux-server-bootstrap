@@ -48,10 +48,10 @@ for t in "${ORDER[@]}"; do
     if ! docker build -q -t "$image" --build-arg "BASE=$base" -f "$ROOT/tests/docker/$dockerfile" "$ROOT/tests/docker" >"$log" 2>&1; then
         echo "  build failed, see $log"; results+=("$t: BUILD FAILED"); continue
     fi
-    docker rm -f "$name" >/dev/null 2>&1
+    docker rm -f -v "$name" >/dev/null 2>&1
     docker run -d --name "$name" --privileged --cgroupns=host \
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw --tmpfs /run --tmpfs /run/lock \
-        -v "$ROOT:/opt/linux-start:ro" "$image" >/dev/null || { results+=("$t: RUN FAILED"); continue; }
+        -v "$ROOT:/opt/linux-start:ro" -v /var/lib/docker -v /var/lib/containerd "$image" >/dev/null || { results+=("$t: RUN FAILED"); continue; }
 
     # Ждём, пока systemd поднимется
     for _ in $(seq 1 30); do
@@ -72,7 +72,7 @@ for t in "${ORDER[@]}"; do
 
     if (( rc == 0 && vrc == 0 )); then res="PASS"; else res="FAIL (script rc=$rc, verify rc=$vrc)"; fi
     results+=("$t: $res [${dur}s]")
-    [[ ${KEEP:-0} == 1 ]] || docker rm -f "$name" >/dev/null
+    [[ ${KEEP:-0} == 1 ]] || docker rm -f -v "$name" >/dev/null
 done
 
 echo

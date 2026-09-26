@@ -3,7 +3,7 @@
 Модульный скрипт первичной настройки Linux-сервера с меню-чеклистом на русском или английском.
 *Modular initial Linux server setup script with a checklist menu in Russian or English — [English below](#english).*
 
-**Поддерживаемые ОС:** Ubuntu 22.04+, Debian 12–13, RHEL / Rocky / AlmaLinux / Oracle Linux 8–9, CentOS 7/8/Stream, Astra Linux SE 1.7/1.8, РЕД ОС 7/8.
+**Поддерживаемые ОС:** Ubuntu 22.04 / 24.04, Debian 12 / 13, RHEL / Rocky / AlmaLinux / Oracle Linux 8–9, CentOS 7/8/Stream.
 
 ## Быстрый старт
 
@@ -17,14 +17,20 @@ sudo ./linux-start.sh
 2. Открывается меню с галочками, сгруппированное по разделам. Пробел — отметить, Enter — установить. Если `whiptail` нет, показывается текстовое меню (номера `1 3 5-7`, `a` — все, Enter — установить).
 3. Выбранные модули выполняются по порядку, в конце — итоговый отчёт.
 
-Уже выполненные модули помечены `✓` и при повторном запуске не отмечены по умолчанию.
+После установки скрипт предлагает вернуться в меню и доустановить компоненты. Запустить его снова можно в любой момент командой:
+
+```bash
+sudo linux-start
+```
+
+Команда создаётся при первом запуске (`/usr/local/sbin/linux-start`). Если репозиторий был в `/tmp`, он копируется в `/opt/linux-server-bootstrap`. При повторном запуске меню открывается без отметок, а уже выполненные модули помечены `✓` — отмечайте только то, что нужно доустановить.
 
 ## Модули
 
 | Группа | Модуль | По умолч. | Что делает |
 |---|---|---|---|
-| Репозитории | `repos` | ✔ | Официальные репозитории дистрибутива, перевод на HTTPS (только если хост отвечает по https), universe/multiverse, EPEL+CRB, CentOS → vault, Astra: сетевые репозитории вместо cdrom. Откат при ошибке `apt update`/`makecache` |
-| | `upgrade` | ✔ | Обновление пакетов (на Astra — с отдельным подтверждением) |
+| Репозитории | `repos` | ✔ | Официальные репозитории дистрибутива, перевод на HTTPS (только если хост отвечает по https), universe/multiverse, EPEL+CRB, CentOS → vault. Откат при ошибке `apt update`/`makecache` |
+| | `upgrade` | ✔ | Обновление пакетов |
 | | `auto-updates` | ✔ | `unattended-upgrades` / `dnf-automatic` / `yum-cron`, только обновления безопасности |
 | Система | `locale` | | Добавить/сменить системную локаль |
 | | `hostname` | ✔ | Имя сервера, `/etc/hosts`, `preserve_hostname` для cloud-init |
@@ -35,6 +41,7 @@ sudo ./linux-start.sh
 | | `journald` | ✔ | Постоянный журнал, лимит размера и срока хранения |
 | Программы | `base-tools` | ✔ | curl, wget, htop, git, rsync, tmux, bash-completion, jq, dnsutils… |
 | | `nano`, `mc`, `micro` | ✔ | Редакторы; micro — из репозитория или с GitHub |
+| | `docker` | | Docker CE + Compose + Buildx из официального репозитория, ротация логов, пользователь в группе docker, связка с ufw (см. ниже) |
 | SSH | `ssh-keys` | ✔ | openssh-server, пользователь с sudo, ключ (вставить / URL / файл) |
 | | `ssh-port` | | Нестандартный порт (с сохранением 22 до проверки), SELinux, файрвол, fail2ban |
 | | `ssh-hardening` | ✔ | Только ключи, запрет root, MaxAuthTries. **Не включится, если ни у кого нет ключа** |
@@ -44,7 +51,6 @@ sudo ./linux-start.sh
 | | `crowdsec-console` | | Подключение к app.crowdsec.net |
 | | `auditd` | | Аудит изменений учёток, sudoers, sshd, cron |
 | | `selinux-apparmor` | ✔ | Только отчёт о статусе |
-| | `astra-security` | ✔ | Только на Astra: уровень защищённости, МКЦ, ЗПС (отчёт) |
 | Уведомления | `telegram-ssh` | | Сообщение в Telegram при каждом входе по SSH (pam_exec) |
 
 `fail2ban` и `crowdsec` помечены как конфликтующие — при выборе обоих скрипт предупредит.
@@ -68,7 +74,7 @@ sudo bash modules/22-timezone.sh               # один модуль отде�
 - Изменяемые файлы копируются в `/var/backups/linux-start/<дата>/`, журнал — `/var/log/linux-start.log`.
 - Конфигурация sshd проверяется `sshd -t` и при ошибке откатывается.
 - **После изменения SSH не закрывайте текущую сессию** — проверьте вход в новом окне.
-- Docker публикует порты в обход ufw (правила в цепочке DOCKER). Для серверов с Docker используйте `ufw-docker` или `"iptables": false` в daemon.json.
+- Docker публикует порты в обход ufw. Модуль `docker` (если ufw активен) добавляет правила в цепочку `DOCKER-USER`: опубликованные порты контейнеров закрыты извне, пока вы не откроете их командой `ufw route allow proto tcp from any to any port <порт внутри контейнера>`. Доступ из локальных сетей (10/8, 172.16/12, 192.168/16) остаётся.
 
 ## Как добавить свой модуль
 
@@ -79,7 +85,7 @@ sudo bash modules/22-timezone.sh               # один модуль отде�
 # @group     software                      # id группы из lib/groups.conf
 # @title     Docker | Docker                # название RU | EN
 # @default   off                            # отмечен ли по умолчанию
-# @os        debian,rhel,!astra             # где доступен (all по умолчанию)
+# @os        debian,rhel,!centos            # где доступен (all по умолчанию)
 # @conflicts podman                         # несовместимые модули (необязательно)
 
 module_run() {
@@ -105,7 +111,7 @@ tests/run-tests.sh debian12 rocky9
 LS_TEST_MODULES="ufw crowdsec" tests/run-tests.sh debian12
 ```
 
-В контейнере не проверяются swap, auditd и hostname. Для Astra Linux и РЕД ОС нет публичных Docker-образов — их нужно проверять на ВМ.
+В контейнере не проверяются swap, auditd и hostname.
 
 ---
 
@@ -115,6 +121,7 @@ LS_TEST_MODULES="ufw crowdsec" tests/run-tests.sh debian12
 
 ```bash
 sudo ./linux-start.sh              # checklist menu
+sudo linux-start                   # re-run later to install more
 sudo ./linux-start.sh --list       # list modules
 sudo ./linux-start.sh -c answers.conf -y   # unattended
 ```

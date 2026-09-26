@@ -72,11 +72,14 @@ modules_in_group() {
     done
 }
 
-# Отметки по умолчанию: @default on, но уже выполненные — сняты
+# Отметки по умолчанию: при первой настройке — модули с @default on.
+# При повторном запуске (что-то уже выполнялось) меню открывается пустым:
+# отмечаете только то, что нужно доустановить.
 init_selection() {
-    local id
+    local id rerun=0
+    [[ -s $LS_STATE_DIR/done ]] && rerun=1
     for id in "${MOD_IDS[@]}"; do
-        if [[ ${MOD_DEFAULT[$id]} == on ]] && ! is_done "$id"; then SEL[$id]=1; else SEL[$id]=0; fi
+        if (( ! rerun )) && [[ ${MOD_DEFAULT[$id]} == on ]]; then SEL[$id]=1; else SEL[$id]=0; fi
     done
 }
 
