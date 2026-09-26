@@ -6,7 +6,7 @@
 #   # @group     system                      — id группы из lib/groups.conf
 #   # @title     Часовой пояс | Timezone     — название RU | EN
 #   # @default   on|off                      — отмечен ли в меню по умолчанию
-#   # @os        all | debian | rhel | astra,redos | !astra   — где доступен
+#   # @os        all | debian | rhel | ubuntu,rocky | !centos — где доступен
 #   # @conflicts fail2ban                    — с какими модулями не сочетается
 # NN задаёт порядок выполнения. / NN defines the execution order.
 
@@ -20,7 +20,7 @@ _trim() { local s=$1; s=${s#"${s%%[![:space:]]*}"}; printf '%s' "${s%"${s##*[![:
 
 _meta() { sed -nE "s/^#[[:space:]]*@$2[[:space:]]+//p" "$1" | head -n1; }
 
-# os_matches "debian,!astra" — подходит ли модуль к текущей ОС
+# os_matches "debian,!ubuntu" — подходит ли модуль к текущей ОС
 os_matches() {
     local spec=${1//,/ } tok positive=0 matched=0
     [[ -z $spec || $spec == all ]] && return 0

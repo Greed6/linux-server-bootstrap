@@ -8,7 +8,8 @@
 switch_to_https() {
     local files=("$@") hosts host
     ((${#files[@]})) || return 0
-    hosts=$(grep -hoE 'http://[^/ "$]+' "${files[@]}" 2>/dev/null | sed 's|http://||' | sort -u)
+    # Только активные строки: закомментированные зеркала не проверяем
+    hosts=$(grep -hE '^[^#]*http://' "${files[@]}" 2>/dev/null | grep -oE 'http://[^/ "$]+' | sed 's|http://||' | sort -u)
     if [[ -z $hosts ]]; then
         ok "$(L 'Все репозитории уже используют https' 'All repositories already use https')"
         return 0
@@ -23,36 +24,13 @@ switch_to_https() {
     done
 }
 
-astra_repos() {
-    local list=/etc/apt/sources.list rel="" r
-    [[ $OS_VER == 1.7* ]] && rel=1.7
-    [[ $OS_VER == 1.8* ]] && rel=1.8
+# Строка «deb cdrom:» (установка с DVD) ломает apt update на сервере
+disable_cdrom_repo() {
+    local list=/etc/apt/sources.list
+    grep -qsE '^\s*deb\s+cdrom:' "$list" || return 0
     backup "$list"
-    touch "$list"
-
-    # CD/DVD-репозиторий на сервере мешает apt update
-    if grep -qE '^\s*deb\s+cdrom:' "$list"; then
-        sed -i -E 's/^(\s*deb\s+cdrom:)/# \1/' "$list"
-        info "$(L 'Отключён cdrom-репозиторий' 'cdrom repository disabled')"
-    fi
-
-    [[ -z $rel ]] && return 0
-    grep -qsE '^\s*deb\s+https?://dl\.astralinux\.ru' "$list" /etc/apt/sources.list.d/*.list && return 0
-    ask_yn ASTRA_ONLINE_REPOS "$(L "Добавить сетевые репозитории Astra Linux $rel (dl.astralinux.ru)?" \
-                                   "Add Astra Linux $rel online repositories (dl.astralinux.ru)?")" y || return 0
-    {
-        echo ""
-        echo "# linux-start: Astra Linux $rel"
-        if [[ $rel == 1.7 ]]; then
-            for r in main update base extended; do
-                echo "deb https://dl.astralinux.ru/astra/stable/1.7_x86-64/repository-$r/ 1.7_x86-64 main contrib non-free"
-            done
-        else
-            echo "deb https://dl.astralinux.ru/astra/stable/1.8_x86-64/main-repository/ 1.8_x86-64 main contrib non-free non-free-firmware"
-            echo "deb https://dl.astralinux.ru/astra/stable/1.8_x86-64/extended-repository/ 1.8_x86-64 main contrib non-free non-free-firmware"
-        fi
-    } >> "$list"
-    summary "$(L "Добавлены репозитории Astra $rel" "Astra $rel repositories added")"
+    sed -i -E 's/^(\s*deb\s+cdrom:)/# \1/' "$list"
+    info "$(L 'Отключён cdrom-репозиторий' 'cdrom repository disabled')"
 }
 
 debian_standard_sources() {
@@ -107,7 +85,7 @@ ubuntu_components() {
 
 repos_debian() {
     local f files=()
-    [[ $OS_ID == astra ]] && astra_repos
+    disable_cdrom_repo
 
     info "$(L 'Обновляю индексы пакетов…' 'Updating package index…')"
     pkg_update || warn "$(L 'apt update завершился с ошибкой' 'apt update failed')"
@@ -130,6 +108,22 @@ repos_debian() {
         restore "${files[@]}"
         pkg_update || return 1
     fi
+}
+
+# metalink/mirrorlist по умолчанию отдают и http-зеркала — просим только https.
+# Параметр protocol понимают сервисы зеркал CentOS, Fedora (EPEL), Rocky и AlmaLinux.
+https_only_mirrors() {
+    local f files=()
+    for f in /etc/yum.repos.d/*.repo; do
+        grep -qE '^(mirrorlist|metalink)=https://mirrors\.(centos|fedoraproject|rockylinux|almalinux)\.org' "$f" && files+=("$f")
+    done
+    ((${#files[@]})) || return 0
+    backup "${files[@]}"
+    sed -i -E '/^(mirrorlist|metalink)=https:\/\/mirrors\.(centos|fedoraproject|rockylinux|almalinux)\.org/ {
+        s/protocol=[a-z,]+/protocol=https/
+        /protocol=/! { /\?/ s/$/\&protocol=https/; /\?/! s/$/?protocol=https/ }
+    }' "${files[@]}"
+    ok "$(L 'Зеркала: только https' 'Mirrors: https only')"
 }
 
 repos_rhel() {
@@ -159,7 +153,7 @@ repos_rhel() {
     switch_to_https "${files[@]}"
 
     # EPEL — там ufw, fail2ban и часть утилит
-    if [[ $OS_ID != redos ]] && ! pkg_installed epel-release && ! pkg_installed "oracle-epel-release-el$OS_MAJOR"; then
+    if ! pkg_installed epel-release && ! pkg_installed "oracle-epel-release-el$OS_MAJOR"; then
         if ask_yn EPEL "$(L 'Подключить EPEL (нужен для ufw, fail2ban, htop)?' 'Enable EPEL (needed for ufw, fail2ban, htop)?')" y; then
             case $OS_ID in
                 rhel)
@@ -180,6 +174,17 @@ repos_rhel() {
         fi
     fi
 
+    https_only_mirrors
+
+    # EPEL 7 закрыт вместе с EL7 и перенесён в архив Fedora
+    if (( OS_MAJOR == 7 )) && [[ -f /etc/yum.repos.d/epel.repo ]] && ! grep -q archives.fedoraproject.org /etc/yum.repos.d/epel.repo; then
+        backup /etc/yum.repos.d/epel.repo
+        sed -i -E -e 's|^(metalink=)|#\1|' \
+                  -e 's|^#?baseurl=.*/pub/epel/7/|baseurl=https://archives.fedoraproject.org/pub/archive/epel/7/|' \
+                  /etc/yum.repos.d/epel.repo
+        info "$(L 'EPEL 7 переведён на архив archives.fedoraproject.org' 'EPEL 7 switched to archives.fedoraproject.org')"
+    fi
+
     if ! pkg_update; then
         warn "$(L 'makecache не прошёл — откатываю https-замену' 'makecache failed — reverting https switch')"
         restore "${files[@]}"
@@ -189,6 +194,12 @@ repos_rhel() {
 
 module_run() {
     if [[ $FAMILY == debian ]]; then repos_debian; else repos_rhel; fi || return 1
+
+    # На EOL-системах (CentOS 8 и т. п.) локаль не ставится до починки зеркал — доустанавливаем
+    if [[ $UI_LANG == ru ]] && ! has_locale ru_RU.UTF-8; then
+        locale_ensure ru_RU.UTF-8 && locale_set_default ru_RU.UTF-8 \
+            && summary "$(L 'Системная локаль' 'System locale'): ru_RU.UTF-8"
+    fi
     summary "$(L 'Репозитории настроены' 'Repositories configured') ($PKG)"
 }
 

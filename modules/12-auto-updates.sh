@@ -2,7 +2,7 @@
 # @group   repos
 # @title   Автообновления безопасности | Automatic security updates
 # @default on
-# @os      !astra
+# @os      all
 
 auto_updates_debian() {
     local reboot=false rtime=""
@@ -31,8 +31,8 @@ EOF
 
 auto_updates_rhel() {
     local type=security
-    # В CentOS и РЕД ОС нет security-метаданных — «security» там ничего не поставит
-    if [[ $OS_ID == centos || $OS_ID == redos ]]; then
+    # В CentOS нет security-метаданных — «security» там ничего не поставит
+    if [[ $OS_ID == centos ]]; then
         warn "$(L "$OS_ID не публикует метаданные безопасности — будут ставиться все обновления" \
                   "$OS_ID does not publish security metadata — all updates will be applied")"
         type=default

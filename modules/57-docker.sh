@@ -52,14 +52,6 @@ docker_install() {
             $PKG install -y -q --allowerasing "${DOCKER_PKGS[@]}" </dev/null \
                 || $PKG install -y -q "${DOCKER_PKGS[@]}" </dev/null
             ;;
-        *)
-            # Нет официального репозитория — пробуем пакеты дистрибутива
-            warn "$(L "Для $OS_ID нет официального репозитория Docker — ставлю пакеты дистрибутива" \
-                      "No official Docker repository for $OS_ID — using distribution packages")"
-            pkg_install docker-ce docker-compose-plugin 2>/dev/null \
-                || pkg_install docker.io docker-compose-plugin 2>/dev/null \
-                || pkg_install docker.io docker-compose
-            ;;
     esac
 }
 

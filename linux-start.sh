@@ -3,7 +3,8 @@
 # linux-start.sh — первичная настройка Linux-сервера / initial Linux server setup
 #
 # Поддержка / Supported:
-#   Ubuntu 22.04/24.04, Debian 12/13, RHEL / Rocky / AlmaLinux / Oracle Linux 8/9
+#   Ubuntu 22.04/24.04, Debian 12/13, RHEL / Rocky / AlmaLinux / Oracle Linux 8/9,
+#   CentOS 7 / 8 / Stream 8 / 9 / 10
 #
 # Повторный запуск / Re-run:  sudo linux-start
 #

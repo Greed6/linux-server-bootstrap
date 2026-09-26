@@ -5,11 +5,6 @@
 # @os      all
 
 module_run() {
-    if [[ $OS_ID == astra ]]; then
-        warn "$(L 'На Astra Linux обновление меняет версию ОС — делайте его осознанно (см. документацию astra-update)' \
-                  'On Astra Linux an upgrade changes the OS update level — do it deliberately (see astra-update docs)')"
-        ask_yn ASTRA_UPGRADE "$(L 'Всё равно обновить?' 'Upgrade anyway?')" n || return 0
-    fi
     if [[ $FAMILY == debian ]]; then
         apt-get update -q </dev/null || return 1
         DEBIAN_FRONTEND=noninteractive apt-get -y -q \

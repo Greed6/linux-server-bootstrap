@@ -8,6 +8,12 @@
 [[ -n ${LS_COMMON_LOADED:-} ]] && return 0
 LS_COMMON_LOADED=1
 
+# bash < 4.4 (CentOS 7) считает пустой массив "${arr[@]}" неопределённой
+# переменной при set -u — там nounset отключаем.
+if (( BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4) )); then
+    set +u
+fi
+
 LS_ROOT=${LS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 LS_STATE_DIR=${LS_STATE_DIR:-/var/lib/linux-start}
 LS_LOG_FILE=${LS_LOG_FILE:-/var/log/linux-start.log}
@@ -180,7 +186,7 @@ is_done() { grep -q "^$1 " "$LS_STATE_DIR/done" 2>/dev/null; }
 
 detect_os() {
     [[ -r /etc/os-release ]] || die "/etc/os-release not found"
-    local ID="" ID_LIKE="" PRETTY_NAME="" VERSION_ID="" VERSION_CODENAME=""
+    local ID="" PRETTY_NAME="" VERSION_ID="" VERSION_CODENAME=""
     # shellcheck disable=SC1091
     . /etc/os-release
     OS_ID=${ID,,}
@@ -190,14 +196,9 @@ detect_os() {
     OS_CODENAME=${VERSION_CODENAME:-}
 
     case $OS_ID in
-        ubuntu|debian|astra)                  FAMILY=debian ;;
-        rhel|centos|rocky|almalinux|ol|redos) FAMILY=rhel ;;
-        *)
-            case " ${ID_LIKE:-} " in
-                *debian*|*ubuntu*)        FAMILY=debian ;;
-                *rhel*|*fedora*|*centos*) FAMILY=rhel ;;
-                *) die "Unsupported OS: $OS_NAME" ;;
-            esac ;;
+        ubuntu|debian)                  FAMILY=debian ;;
+        rhel|centos|rocky|almalinux|ol) FAMILY=rhel ;;
+        *) die "Unsupported OS: $OS_NAME. Supported: Ubuntu, Debian, RHEL, CentOS, Rocky, AlmaLinux, Oracle Linux" ;;
     esac
 
     if [[ $FAMILY == rhel ]]; then
@@ -253,7 +254,18 @@ pkg_ensure() {
 # systemd
 # --------------------------------------------------------------------------
 
-has_systemd() { command -v systemctl >/dev/null && [[ -d /run/systemd/system ]]; }
+# systemd работает, если отвечает systemctl (каталога /run/systemd/system недостаточно)
+has_systemd() {
+    if [[ -z ${LS_HAS_SYSTEMD:-} ]]; then
+        if command -v systemctl >/dev/null && [[ -d /run/systemd/system ]] \
+            && systemctl list-units --no-pager >/dev/null 2>&1; then
+            LS_HAS_SYSTEMD=1
+        else
+            LS_HAS_SYSTEMD=0
+        fi
+    fi
+    [[ $LS_HAS_SYSTEMD == 1 ]]
+}
 
 svc_exists() { systemctl list-unit-files "$1.service" 2>/dev/null | grep -q "^$1\.service"; }
 svc_active() { has_systemd && systemctl is-active --quiet "$1" 2>/dev/null; }
@@ -316,9 +328,16 @@ ssh_version() {
     echo "${v:-0}"
 }
 
+# Без host-ключей sshd -t/-T завершаются ошибкой (sshd ещё ни разу не запускался)
+ensure_host_keys() {
+    ls /etc/ssh/ssh_host_*_key >/dev/null 2>&1 || ssh-keygen -A >/dev/null 2>&1
+    return 0
+}
+
 # Порты, на которых слушает sshd (по итоговой конфигурации)
 sshd_ports() {
     local ports
+    ensure_host_keys
     mkdir -p /run/sshd 2>/dev/null
     ports=$("$(sshd_bin)" -T 2>/dev/null | awk '$1 == "port" {print $2}' | sort -un | tr '\n' ' ')
     [[ -z $ports ]] && ports="22"
@@ -369,6 +388,7 @@ sshd_write_block() {
     fi
 
     mkdir -p /run/sshd
+    ensure_host_keys
     if "$(sshd_bin)" -t; then
         sshd_restart
         return 0
@@ -381,7 +401,7 @@ sshd_write_block() {
 
 sudo_group() {
     local g
-    for g in astra-admin sudo wheel; do
+    for g in sudo wheel; do
         getent group "$g" >/dev/null && { echo "$g"; return; }
     done
 }

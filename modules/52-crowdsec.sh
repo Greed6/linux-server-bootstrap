@@ -6,19 +6,14 @@
 # @conflicts fail2ban
 
 add_crowdsec_repo() {
-    local tmp os="" dist=""
-    # Установщик репозитория не знает Astra и РЕД ОС — подсказываем базовый дистрибутив
-    case $OS_ID in
-        astra) os=debian; if [[ $OS_VER == 1.8* ]]; then dist=bookworm; else dist=buster; fi ;;
-        redos) os=rhel; if (( OS_MAJOR >= 8 )); then dist=9; else dist=7; fi ;;
-        # rocky, almalinux, ol, rhel, centos, debian, ubuntu установщик определяет сам
-    esac
+    local tmp rc
+    # Установщик сам определяет Ubuntu, Debian, RHEL, CentOS, Rocky, AlmaLinux, Oracle Linux
     tmp=$(mktemp)
     if ! curl -fsSL --max-time 30 https://install.crowdsec.net -o "$tmp"; then
         rm -f "$tmp"; return 1
     fi
-    if [[ -n $os ]]; then os=$os dist=$dist bash "$tmp"; else bash "$tmp"; fi
-    local rc=$?
+    bash "$tmp"
+    rc=$?
     rm -f "$tmp"
     return $rc
 }
