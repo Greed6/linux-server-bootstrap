@@ -10,8 +10,8 @@ add_crowdsec_repo() {
     # Установщик репозитория не знает Astra и РЕД ОС — подсказываем базовый дистрибутив
     case $OS_ID in
         astra) os=debian; if [[ $OS_VER == 1.8* ]]; then dist=bookworm; else dist=buster; fi ;;
-        redos) os=el; if (( OS_MAJOR >= 8 )); then dist=9; else dist=7; fi ;;
-        rocky|almalinux|ol|rhel|centos) os=el; dist=$OS_MAJOR ;;
+        redos) os=rhel; if (( OS_MAJOR >= 8 )); then dist=9; else dist=7; fi ;;
+        # rocky, almalinux, ol, rhel, centos, debian, ubuntu установщик определяет сам
     esac
     tmp=$(mktemp)
     if ! curl -fsSL --max-time 30 https://install.crowdsec.net -o "$tmp"; then

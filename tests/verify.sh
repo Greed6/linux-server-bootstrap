@@ -55,7 +55,7 @@ fi
 has fail2ban && check "fail2ban sshd jail" fail2ban-client status sshd
 if has crowdsec; then
     check "crowdsec running"   systemctl is-active crowdsec
-    check "crowdsec LAPI 8081" bash -c 'ss -ltn | grep -qE "0\.0\.0\.0:8081\s"'
+    check "crowdsec LAPI 8081" bash -c 'ss -ltn | grep -qE "(0\.0\.0\.0|\*|\[::\]):8081\s"'
     check "bouncer registered" bash -c 'cscli bouncers list | grep -q firewall'
 fi
 
