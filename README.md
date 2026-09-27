@@ -9,6 +9,41 @@ CentOS 8 и Stream 8 больше не получают обновлений: с
 
 ## Быстрый старт
 
+### Одной командой
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Greed6/linux-server-bootstrap/main/install.sh | sudo bash
+```
+
+Если `curl` нет (минимальный Debian):
+
+```bash
+wget -qO- https://raw.githubusercontent.com/Greed6/linux-server-bootstrap/main/install.sh | sudo bash
+```
+
+[`install.sh`](install.sh) скачивает скрипт в `/opt/linux-server-bootstrap` и сразу открывает меню. Повторный запуск той же команды обновляет скрипт до последней версии (каталог заменяется целиком — не храните в нём свои файлы, например файл ответов).
+
+Аргументы для `linux-start.sh` передаются после `bash -s --`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Greed6/linux-server-bootstrap/main/install.sh | sudo bash -s -- --lang en --text-menu
+curl -fsSL https://raw.githubusercontent.com/Greed6/linux-server-bootstrap/main/install.sh | sudo bash -s -- -m "timezone ntp ufw" -y
+```
+
+**Приватный репозиторий.** Пока репозиторий приватный, GitHub отдаёт файлы только с токеном. Создайте [fine-grained token](https://github.com/settings/personal-access-tokens/new) с доступом *Contents: Read-only* к этому репозиторию и передайте его обоим запросам:
+
+```bash
+export GITHUB_TOKEN=github_pat_...
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://raw.githubusercontent.com/Greed6/linux-server-bootstrap/main/install.sh | sudo GITHUB_TOKEN="$GITHUB_TOKEN" bash
+```
+
+Переменные `install.sh`: `GITHUB_TOKEN`, `LS_REF` (ветка или тег, по умолчанию `main`), `LS_DEST` (каталог установки).
+
+> Перед запуском через `curl | bash` можно посмотреть, что именно будет выполнено: `curl -fsSL <url>/install.sh | less`.
+
+### Через git
+
 ```bash
 git clone git@github.com:Greed6/linux-server-bootstrap.git
 cd linux-server-bootstrap
@@ -122,6 +157,9 @@ LS_TEST_MODULES="ufw crowdsec" tests/run-tests.sh debian12
 `linux-start` is a modular first-boot setup script for Linux servers. On the first run it asks whether to install the Russian locale as default; the checklist menu is then shown in Russian or English. Every task is a separate script in `modules/` with metadata in header comments, so the menu is built automatically — drop in a new `NN-id.sh` to add an item, delete the file to remove it.
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/Greed6/linux-server-bootstrap/main/install.sh | sudo bash
+# private repository: add -H "Authorization: Bearer $GITHUB_TOKEN" to curl and sudo GITHUB_TOKEN=... bash
+
 sudo ./linux-start.sh              # checklist menu
 sudo linux-start                   # re-run later to install more
 sudo ./linux-start.sh --list       # list modules
