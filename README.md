@@ -1,9 +1,34 @@
-# linux-start
+# linux-server-bootstrap
 
-Модульный скрипт первичной настройки Linux-сервера с меню-чеклистом на русском или английском.
-*Modular initial Linux server setup script with a checklist menu in Russian or English — [English below](#english).*
+[![ShellCheck](https://github.com/Greed6/linux-server-bootstrap/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Greed6/linux-server-bootstrap/actions/workflows/shellcheck.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Bash](https://img.shields.io/badge/Bash-4.4%2B-4EAA25?logo=gnubash&logoColor=white)](linux-start.sh)
+[![Last commit](https://img.shields.io/github/last-commit/Greed6/linux-server-bootstrap)](https://github.com/Greed6/linux-server-bootstrap/commits/main)
+[![Menu: RU/EN](https://img.shields.io/badge/menu-RU%20%7C%20EN-blue)](#быстрый-старт)
 
-**Поддерживаемые ОС:** Ubuntu 22.04 / 24.04, Debian 12 / 13, RHEL / Rocky / AlmaLinux / Oracle Linux 8–9, CentOS 8 / Stream 8 / 9 / 10.
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white)](#)
+[![Debian](https://img.shields.io/badge/Debian-12%20%7C%2013-A81D33?logo=debian&logoColor=white)](#)
+[![RHEL](https://img.shields.io/badge/RHEL-8%20%7C%209-EE0000?logo=redhat&logoColor=white)](#)
+[![Rocky Linux](https://img.shields.io/badge/Rocky-9-10B981?logo=rockylinux&logoColor=white)](#)
+[![AlmaLinux](https://img.shields.io/badge/AlmaLinux-8%20%7C%209-0F4266?logo=almalinux&logoColor=white)](#)
+[![Oracle Linux](https://img.shields.io/badge/Oracle%20Linux-9-F80000)](#)
+[![CentOS](https://img.shields.io/badge/CentOS-8%20%7C%20Stream%208%2F9%2F10-262577?logo=centos&logoColor=white)](#)
+
+Модульный скрипт первичной настройки Linux-сервера: одна команда, меню с галочками на русском или английском — и сервер готов к работе. Каждая задача — отдельный модуль, поэтому пункты меню легко добавлять и убирать, а скрипт можно запускать повторно, чтобы доустановить компоненты.
+*Modular first-boot setup for Linux servers: one command, a checklist menu in Russian or English, one module per task, safe to re-run — [English below](#english).*
+
+**Что умеет:**
+
+- 🔐 **SSH:** пользователь с sudo, ключ (вставить / URL / файл), вход только по ключу, нестандартный порт — с проверкой `sshd -t` и откатом при ошибке
+- 🧱 **Файрвол и защита:** ufw (только SSH, IPv4+IPv6), fail2ban или CrowdSec с общим чёрным списком, sysctl-hardening, auditd
+- 📦 **Репозитории:** официальные зеркала по HTTPS, EPEL, автообновления безопасности, CentOS 8 → vault
+- 🕒 **Система:** локаль, часовой пояс (по умолчанию Москва, UTC+3), NTP (chrony), hostname, swap, journald
+- 🐳 **Docker + Compose** с ротацией логов и защитой опубликованных портов через ufw
+- 🛠 **Программы:** nano, mc, micro, htop, git, tmux, jq и другие
+- 🔔 Уведомления о входе по SSH в Telegram
+- ♻️ Повторный запуск `sudo linux-start`, файл ответов для запуска без вопросов, бэкап всех изменённых файлов
+
+**Поддерживаемые ОС:** Ubuntu 22.04 / 24.04, Debian 12 / 13, RHEL / Rocky / AlmaLinux / Oracle Linux 8–9, CentOS 8 / Stream 8 / 9 / 10. Все они, кроме самого RHEL, проверены интеграционными тестами в Docker; RHEL покрыт совместимыми Rocky, AlmaLinux и Oracle Linux.
 
 CentOS 8 и Stream 8 больше не получают обновлений: скрипт переводит их на архив `vault.centos.org` и предупреждает о необходимости миграции. CentOS 7 / RHEL 7 не поддерживаются — скрипт завершится с сообщением.
 

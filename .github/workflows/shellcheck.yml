@@ -1,0 +1,24 @@
+name: ShellCheck
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax check (bash -n)
+        run: |
+          for f in install.sh linux-start.sh lib/*.sh modules/*.sh tests/*.sh; do
+            bash -n "$f"
+          done
+
+      - name: ShellCheck
+        run: |
+          shellcheck --version
+          shellcheck -x -S warning -e SC1091,SC2034 \
+            install.sh linux-start.sh lib/*.sh modules/*.sh tests/*.sh
