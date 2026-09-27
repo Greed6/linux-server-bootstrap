@@ -127,11 +127,10 @@ https_only_mirrors() {
 }
 
 repos_rhel() {
-    local f files=() centos_stream=0
-    grep -qi stream /etc/centos-release 2>/dev/null && centos_stream=1
+    local f files=()
 
-    # CentOS 7 / 8 / Stream 8 — EOL, зеркала переехали в vault
-    if [[ $OS_ID == centos && ( $OS_MAJOR == 7 || $OS_MAJOR == 8 ) ]]; then
+    # CentOS 8 / Stream 8 — EOL, зеркала переехали в vault
+    if [[ $OS_ID == centos && $OS_MAJOR == 8 ]]; then
         if ask_yn CENTOS_VAULT "$(L "CentOS $OS_MAJOR больше не поддерживается. Перевести репозитории на архив vault.centos.org?" \
                                     "CentOS $OS_MAJOR is EOL. Switch repositories to the vault.centos.org archive?")" y; then
             backup /etc/yum.repos.d/CentOS-*.repo
@@ -144,8 +143,6 @@ repos_rhel() {
         warn "$(L 'Обновлений безопасности для этой версии больше нет — рекомендуется миграция на Rocky/Alma/RHEL' \
                   'No more security updates for this release — migration to Rocky/Alma/RHEL is recommended')"
     fi
-    (( centos_stream )) && [[ $OS_MAJOR == 8 ]] && \
-        warn "CentOS Stream 8 is EOL"
 
     for f in /etc/yum.repos.d/*.repo; do [[ -f $f ]] && files+=("$f"); done
     backup "${files[@]}"
@@ -176,14 +173,6 @@ repos_rhel() {
 
     https_only_mirrors
 
-    # EPEL 7 закрыт вместе с EL7 и перенесён в архив Fedora
-    if (( OS_MAJOR == 7 )) && [[ -f /etc/yum.repos.d/epel.repo ]] && ! grep -q archives.fedoraproject.org /etc/yum.repos.d/epel.repo; then
-        backup /etc/yum.repos.d/epel.repo
-        sed -i -E -e 's|^(metalink=)|#\1|' \
-                  -e 's|^#?baseurl=.*/pub/epel/7/|baseurl=https://archives.fedoraproject.org/pub/archive/epel/7/|' \
-                  /etc/yum.repos.d/epel.repo
-        info "$(L 'EPEL 7 переведён на архив archives.fedoraproject.org' 'EPEL 7 switched to archives.fedoraproject.org')"
-    fi
 
     if ! pkg_update; then
         warn "$(L 'makecache не прошёл — откатываю https-замену' 'makecache failed — reverting https switch')"

@@ -38,18 +38,11 @@ auto_updates_rhel() {
         type=default
     fi
 
-    if [[ $PKG == yum ]]; then
-        pkg_ensure yum-cron || return 1
-        backup /etc/yum/yum-cron.conf
-        sed -i -E "s/^update_cmd\s*=.*/update_cmd = ${type}/; s/^apply_updates\s*=.*/apply_updates = yes/" /etc/yum/yum-cron.conf
-        svc_enable_now yum-cron
-    else
-        pkg_ensure dnf-automatic || return 1
-        local conf=/etc/dnf/automatic.conf
-        backup "$conf"
-        sed -i -E "s/^upgrade_type\s*=.*/upgrade_type = ${type}/; s/^apply_updates\s*=.*/apply_updates = yes/" "$conf"
-        has_systemd && systemctl enable --now dnf-automatic.timer
-    fi
+    pkg_ensure dnf-automatic || return 1
+    local conf=/etc/dnf/automatic.conf
+    backup "$conf"
+    sed -i -E "s/^upgrade_type\s*=.*/upgrade_type = ${type}/; s/^apply_updates\s*=.*/apply_updates = yes/" "$conf"
+    has_systemd && systemctl enable --now dnf-automatic.timer
     summary "$(L 'Автообновления' 'Automatic updates'): $PKG ($type)"
 }
 

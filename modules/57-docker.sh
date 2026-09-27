@@ -49,8 +49,7 @@ docker_install() {
         rhel|centos|rocky|almalinux|ol)
             docker_repo_rhel || return 1
             # --allowerasing заменяет podman/runc, которые конфликтуют с containerd.io
-            $PKG install -y -q --allowerasing "${DOCKER_PKGS[@]}" </dev/null \
-                || $PKG install -y -q "${DOCKER_PKGS[@]}" </dev/null
+            $PKG install -y -q --allowerasing "${DOCKER_PKGS[@]}" </dev/null
             ;;
     esac
 }

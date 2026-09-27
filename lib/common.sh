@@ -8,11 +8,6 @@
 [[ -n ${LS_COMMON_LOADED:-} ]] && return 0
 LS_COMMON_LOADED=1
 
-# bash < 4.4 (CentOS 7) считает пустой массив "${arr[@]}" неопределённой
-# переменной при set -u — там nounset отключаем.
-if (( BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4) )); then
-    set +u
-fi
 
 LS_ROOT=${LS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 LS_STATE_DIR=${LS_STATE_DIR:-/var/lib/linux-start}
@@ -202,7 +197,8 @@ detect_os() {
     esac
 
     if [[ $FAMILY == rhel ]]; then
-        if command -v dnf >/dev/null; then PKG=dnf; else PKG=yum; fi
+        (( OS_MAJOR >= 8 )) || die "Unsupported OS: $OS_NAME. RHEL family 8+ is required"
+        PKG=dnf
         SSH_SVC=sshd
     else
         PKG=apt

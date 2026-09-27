@@ -7,9 +7,9 @@
 module_run() {
     local ram_mb def size file=/swapfile mb avail_mb fs swappiness
 
-    if [[ -n $(swapon --show --noheadings 2>/dev/null || tail -n +2 /proc/swaps) ]]; then
+    if [[ -n $(swapon --show --noheadings 2>/dev/null) ]]; then
         info "$(L 'Swap уже есть:' 'Swap already exists:')"
-        swapon --show 2>/dev/null || cat /proc/swaps
+        swapon --show
     else
         ram_mb=$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo)
         if   (( ram_mb <= 2048 )); then def=2G

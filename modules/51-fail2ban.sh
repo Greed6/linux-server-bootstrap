@@ -26,7 +26,8 @@ module_run() {
     if [[ $banaction == ufw && ! -f /etc/fail2ban/action.d/ufw.conf ]]; then
         cat > /etc/fail2ban/action.d/ufw.conf <<'EOF'
 # linux-start: ufw action (missing in EPEL fail2ban)
-# prepend ставит правило первым и для IPv4, и для IPv6 (ufw >= 0.36)
+# prepend ставит правило первым и для IPv4, и для IPv6 (ufw >= 0.36);
+# в EPEL 8 ufw 0.35 — там insert 1
 [Definition]
 actionstart =
 actionstop =

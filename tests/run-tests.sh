@@ -26,14 +26,13 @@ target_spec() {
         alma8)      echo "rhel.Dockerfile almalinux:8" ;;
         alma9)      echo "rhel.Dockerfile almalinux:9" ;;
         ol9)        echo "rhel.Dockerfile oraclelinux:9" ;;
-        centos7)    echo "rhel.Dockerfile centos:7" ;;
         centos8)    echo "rhel.Dockerfile centos:8" ;;
         stream8)    echo "rhel.Dockerfile quay.io/centos/centos:stream8" ;;
         stream9)    echo "rhel.Dockerfile quay.io/centos/centos:stream9" ;;
         stream10)   echo "rhel.Dockerfile quay.io/centos/centos:stream10" ;;
     esac
 }
-ORDER=(debian12 debian13 ubuntu2204 ubuntu2404 rocky9 alma8 alma9 ol9 centos7 centos8 stream8 stream9 stream10)
+ORDER=(debian12 debian13 ubuntu2204 ubuntu2404 rocky9 alma8 alma9 ol9 centos8 stream8 stream9 stream10)
 (($#)) && ORDER=("$@")
 
 # Тестовый ключ (приватная часть не нужна)
@@ -75,14 +74,7 @@ for t in "${ORDER[@]}"; do
     docker exec -e LS_TEST_MODULES="${LS_TEST_MODULES:-}" "$name" bash /opt/linux-start/tests/verify.sh | tee -a "$log"
     vrc=${PIPESTATUS[0]}
 
-    if (( rc == 0 && vrc == 0 )); then
-        res="PASS"
-    elif (( vrc == 0 )) && ! docker exec "$name" systemctl list-units --no-pager >/dev/null 2>&1; then
-        # systemd не поднялся (CentOS 7 на cgroup v2): службы не стартуют, проверки служб — SKIP
-        res="PARTIAL (no systemd in container: services not started, service checks skipped)"
-    else
-        res="FAIL (script rc=$rc, verify rc=$vrc)"
-    fi
+    if (( rc == 0 && vrc == 0 )); then res="PASS"; else res="FAIL (script rc=$rc, verify rc=$vrc)"; fi
     results+=("$t: $res [${dur}s]")
     [[ ${KEEP:-0} == 1 ]] || docker rm -f -v "$name" >/dev/null
 done
@@ -90,5 +82,5 @@ done
 echo
 echo "===== SUMMARY ====="
 printf '  %s\n' "${results[@]}"
-printf '%s\n' "${results[@]}" | grep -qvE ': (PASS|PARTIAL)' && exit 1
+printf '%s\n' "${results[@]}" | grep -qv ': PASS' && exit 1
 exit 0

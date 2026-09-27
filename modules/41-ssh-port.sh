@@ -8,7 +8,7 @@ selinux_allow_port() {
     local port=$1
     selinux_enabled || return 0
     if ! command -v semanage >/dev/null; then
-        pkg_install policycoreutils-python-utils >/dev/null 2>&1 || pkg_install policycoreutils-python >/dev/null 2>&1
+        pkg_install policycoreutils-python-utils >/dev/null 2>&1
     fi
     semanage port -a -t ssh_port_t -p tcp "$port" 2>/dev/null \
         || semanage port -m -t ssh_port_t -p tcp "$port" 2>/dev/null \

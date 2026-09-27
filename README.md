@@ -3,9 +3,9 @@
 Модульный скрипт первичной настройки Linux-сервера с меню-чеклистом на русском или английском.
 *Modular initial Linux server setup script with a checklist menu in Russian or English — [English below](#english).*
 
-**Поддерживаемые ОС:** Ubuntu 22.04 / 24.04, Debian 12 / 13, RHEL / Rocky / AlmaLinux / Oracle Linux 8–9, CentOS 7 / 8 / Stream 8 / 9 / 10.
+**Поддерживаемые ОС:** Ubuntu 22.04 / 24.04, Debian 12 / 13, RHEL / Rocky / AlmaLinux / Oracle Linux 8–9, CentOS 8 / Stream 8 / 9 / 10.
 
-CentOS 7, 8 и Stream 8 больше не получают обновлений: скрипт переводит их на архив `vault.centos.org` (а EPEL 7 — на `archives.fedoraproject.org`) и предупреждает о необходимости миграции.
+CentOS 8 и Stream 8 больше не получают обновлений: скрипт переводит их на архив `vault.centos.org` и предупреждает о необходимости миграции. CentOS 7 / RHEL 7 не поддерживаются — скрипт завершится с сообщением.
 
 ## Быстрый старт
 
@@ -33,7 +33,7 @@ sudo linux-start
 |---|---|---|---|
 | Репозитории | `repos` | ✔ | Официальные репозитории дистрибутива, перевод на HTTPS (только если хост отвечает по https; зеркала из metalink/mirrorlist — только https), universe/multiverse, EPEL+CRB, CentOS → vault. Откат при ошибке `apt update`/`makecache` |
 | | `upgrade` | ✔ | Обновление пакетов |
-| | `auto-updates` | ✔ | `unattended-upgrades` / `dnf-automatic` / `yum-cron`, только обновления безопасности |
+| | `auto-updates` | ✔ | `unattended-upgrades` / `dnf-automatic`, только обновления безопасности |
 | Система | `locale` | | Добавить/сменить системную локаль |
 | | `hostname` | ✔ | Имя сервера, `/etc/hosts`, `preserve_hostname` для cloud-init |
 | | `timezone` | ✔ | Часовой пояс, по умолчанию Europe/Moscow (UTC+3) |
@@ -113,9 +113,7 @@ tests/run-tests.sh debian12 rocky9
 LS_TEST_MODULES="ufw crowdsec" tests/run-tests.sh debian12
 ```
 
-Проверяются Debian 12/13, Ubuntu 22.04/24.04, Rocky 9, AlmaLinux 8/9, Oracle Linux 9, CentOS 7/8, CentOS Stream 8/9/10. В контейнере не проверяются swap, auditd и hostname.
-
-CentOS 7 получает статус PARTIAL: его systemd 219 не запускается на хостах с cgroup v2 (современный Docker), поэтому в контейнере не стартуют службы. Настройка файлов, пакетов, репозиториев, sshd и ufw проверяется, запуск служб — нет.
+Проверяются Debian 12/13, Ubuntu 22.04/24.04, Rocky 9, AlmaLinux 8/9, Oracle Linux 9, CentOS 8, CentOS Stream 8/9/10. В контейнере не проверяются swap, auditd и hostname.
 
 ---
 
