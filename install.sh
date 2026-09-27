@@ -21,7 +21,13 @@ set -euo pipefail
 REPO="Greed6/linux-server-bootstrap"
 REF=${LS_REF:-main}
 DEST=${LS_DEST:-/opt/linux-server-bootstrap}
-URL=${LS_TARBALL_URL:-https://api.github.com/repos/$REPO/tarball/$REF}
+# Публичный архив не ограничен лимитом API (60 запросов в час с IP);
+# с токеном (приватный репозиторий) — только через API
+if [[ -n ${GITHUB_TOKEN:-} ]]; then
+    URL=${LS_TARBALL_URL:-https://api.github.com/repos/$REPO/tarball/$REF}
+else
+    URL=${LS_TARBALL_URL:-https://github.com/$REPO/archive/$REF.tar.gz}
+fi
 
 die() { echo "[x] $*" >&2; exit 1; }
 
